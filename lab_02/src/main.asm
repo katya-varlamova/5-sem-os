@@ -29,7 +29,6 @@ data segment para 'data'
     gdt_null  descr <>
     gdt_code descr <code_size-1,0,0,98h>
     gdt_data4gb descr <0FFFFh,0,0,92h,0CFh> ; attr2: 11001111
-    gdt_code2 descr <code2_size-1,0,0,98h,40h>
     gdt_data descr <data_size-1,0,0,92h,40h>
     gdt_stk descr <stack_size-1,0,0,92h,40h>
     gdt_screen descr <3999,8000h,0Bh,92h>
@@ -39,14 +38,13 @@ data segment para 'data'
 
     codes=8
     data4gbs=16
-    code2s=24
-    datas=32
-    stks=40
-    screens=48
+    datas=24
+    stks=32
+    screens=40
 
     idt label byte
     idescr_0_12 idescr 13 dup (<dummy,codes,0,8Fh,0>)
-    idescr_13 idescr <exc13,codes,0,8Fh,0>
+    idescr_13 idescr <dummy,codes,0,8Fh,0>
     idescr_14_31 idescr 18 dup (<dummy,codes,0,8Fh,0>)
     int08 idescr <timerInt,codes,0,10001110b,0> 
     int09 idescr <keybInt,codes,0,10001110b,0>
@@ -85,17 +83,6 @@ data segment para 'data'
 data ends
 
 
-code2 segment para public 'code' use32
-    assume cs:code2, ds:data, ss:stk
-
-pm_start:
-    db  0EAh
-    dd  offset protected
-    dw  codes
-
-code2_size = $-pm_start
-code2 ends
-
 
 code segment para public 'CODE' use16
 assume cs:code, ds:data, ss: stk
@@ -104,12 +91,6 @@ start:
     dummy proc
         iret
     dummy endp
-
-
-    exc13 proc uses eax
-        pop eax
-        iret
-    exc13 endp
     output_dec proc near
         push edx
         push ecx
@@ -142,37 +123,38 @@ start:
     output_dec endp
 
     countMemory proc 
-        push ebx
-        push eax
-        push dx
-
         mov ax, data4gbs
         mov ds, ax
 
-        mov ebx,  100000h
-        mov dl, 0AEh
+        push eax
+        push ebx
+        push edx
+        mov ebx, 100000h
+        mov eax, 400h
+        xor edx, edx
+    cloop:
+        mov [ebx], eax
+        cmp eax, [ebx]
+        je cloop1
+        jmp exit
+    cloop1:
+        add edx, 4h
+    cloop2:
+        add ebx, 4h
+    
+        jz exit
+        jmp cloop
+    exit:
 
-        mem_loop:
-            inc ebx
-            mov dh, ds:[ebx] 
-            mov ds:[ebx], dl        
-            cmp ds:[ebx], dl        
-            jnz mem_loop
-        
-        mov ds:[ebx], dh 
-        dec ebx
+    mov eax, edx
+    call output_dec
 
-        mov eax, 0FFFFFFFFh
-        sub eax, ebx
-
-        call output_dec
-
-        pop dx
-        pop eax
-        pop ebx
-
-        ret
+    pop edx
+    pop ebx
+    pop eax
+    ret
     countMemory endp
+
     timerInt proc uses eax
         cmp interval_time, interval
         je ON
@@ -280,15 +262,6 @@ start:
         shr eax, 16
         mov (descr ptr [bx]).base_m, al
 
-        ; Загрузка линейного адреса сегмента команд в GDT
-        xor eax, eax
-        mov ax, code2
-        shl eax, 4
-        mov bx, offset gdt_code2
-        mov (descr ptr [bx]).base_l, ax
-        shr eax, 16
-        mov (descr ptr [bx]).base_m, al
-
         ; Загрузка линейного адреса сегмента стека в GDT
         xor eax, eax
         mov ax, stk
@@ -349,10 +322,9 @@ start:
         or  eax, 1
         mov cr0, eax
 
-        db  66h 
         db  0EAh
-        dd  offset pm_start
-        dw  code2s
+        dw  offset protected
+        dw  codes
 
     protected:
         mov ax, datas
@@ -396,7 +368,6 @@ start:
         
         mov gdt_data.limit, 0FFFFh
         mov gdt_code.limit, 0FFFFh
-        mov gdt_code2.limit, 0FFFFh
         mov gdt_stk.limit, 0FFFFh
         mov gdt_screen.limit, 0FFFFh
         mov gdt_data4gb.limit, 0FFFFh
@@ -423,8 +394,6 @@ start:
     real:
         mov ax, data   
         mov ds, ax
-        mov ax, code2
-        mov es, ax
         mov ax, stk   
         mov ss, ax
         mov ax, stack_size
