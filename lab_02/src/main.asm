@@ -29,6 +29,7 @@ data segment para 'data'
     gdt_null  descr <>
     gdt_code descr <code_size-1,0,0,98h>
     gdt_data4gb descr <0FFFFh,0,0,92h,0CFh> ; attr2: 11001111
+    gdt_code2 descr <code2_size-1,0,0,98h,40h>
     gdt_data descr <data_size-1,0,0,92h,40h>
     gdt_stk descr <stack_size-1,0,0,92h,40h>
     gdt_screen descr <3999,8000h,0Bh,92h>
@@ -38,16 +39,17 @@ data segment para 'data'
 
     codes=8
     data4gbs=16
-    datas=24
-    stks=32
-    screens=40
+    code2s=24
+    datas=32
+    stks=40
+    screens=48
 
     idt label byte
-    idescr_0_12 idescr 13 dup (<dummy,codes,0,8Fh,0>)
-    idescr_13 idescr <dummy,codes,0,8Fh,0>
-    idescr_14_31 idescr 18 dup (<dummy,codes,0,8Fh,0>)
-    int08 idescr <timerInt,codes,0,10001110b,0> 
-    int09 idescr <keybInt,codes,0,10001110b,0>
+    idescr_0_12 idescr 13 dup (<dummy,code2s,0,8Fh,0>)
+    idescr_13 idescr <dummy,code2s,0,8Fh,0>
+    idescr_14_31 idescr 18 dup (<dummy,code2s,0,8Fh,0>)
+    int08 idescr <timerInt,code2s,0,10001110b,0> 
+    int09 idescr <keybInt,code2s,0,10001110b,0>
     idt_size = $-idt 
 
     ipdescr df 0
@@ -82,12 +84,74 @@ data segment para 'data'
     data_size = $-gdt_null 
 data ends
 
+code2 segment para public 'code' use32
+     assume cs:code2, ds:data, ss:stk
+     
+    protected:
+        mov ax, datas
+        mov ds, ax
+        mov ax, screens
+        mov es, ax
+        mov ax, stks
+        mov ss, ax
+        mov eax, stack_size
+        mov esp, eax
 
+        mov edi, prmod_pos
+        mov ebx, offset protectmode
+        mov ecx, protectmode_len
+        mov ah, color
 
-code segment para public 'CODE' use16
-assume cs:code, ds:data, ss: stk
-start:
+        loop_02:
+            mov al, byte ptr [bx]
+            inc bx
+            stosw
+        loop loop_02
 
+        mov edi, memmsg_pos
+        mov ebx, offset mem_msg
+        mov ecx, mem_msg_len
+        mov ah, color
+
+        loop_03:
+            mov al, byte ptr [bx]
+            inc bx
+            stosw
+        loop loop_03
+
+        call countMemory
+        mov ax, datas
+        mov ds, ax
+
+        looplab:
+        cmp enter_but, 1
+        jne looplab
+        
+        mov gdt_data.limit, 0FFFFh
+        mov gdt_code.limit, 0FFFFh
+        mov gdt_stk.limit, 0FFFFh
+        mov gdt_screen.limit, 0FFFFh
+        mov gdt_data4gb.limit, 0FFFFh
+
+        push ds
+        pop  ds
+        push es
+        pop  es
+        push ss
+        pop  ss
+        
+        ; Загрузка селектора в регистр CS и модификация теневого регистра
+        db  0EAh
+        dd  offset next
+        dw  code2s
+        next:
+        mov eax, cr0
+        and eax, 0FFFFFFFEh
+        mov cr0, eax
+
+        db  0EAh
+        dd  offset real
+        dw  code
     dummy proc
         iret
     dummy endp
@@ -178,7 +242,6 @@ start:
         mov al, 20h
         out 20h, al
         
-        db 66h
         iretd
     timerInt endp
 
@@ -214,10 +277,15 @@ start:
         pop dx
         pop bx
         pop eax
-        db 66h
-        iret
-    keybInt endp
 
+        iretd
+    keybInt endp
+ code2_size = $-protected
+ code2 ends
+
+code segment para public 'CODE' use16
+assume cs:code, ds:data, ss: stk
+start:
     main    proc
         mov ax, data
         mov ds, ax
@@ -262,6 +330,16 @@ start:
         shr eax, 16
         mov (descr ptr [bx]).base_m, al
 
+
+        ; Загрузка линейного адреса сегмента команд в GDT
+        xor eax, eax
+        mov ax, code2
+        shl eax, 4
+        mov bx, offset gdt_code2
+        mov (descr ptr [bx]).base_l, ax
+        shr eax, 16
+        mov (descr ptr [bx]).base_m, al
+
         ; Загрузка линейного адреса сегмента стека в GDT
         xor eax, eax
         mov ax, stk
@@ -281,7 +359,7 @@ start:
         lgdt pdescr          
 
 
-           ; сохранение масок  
+        ; сохранение масок  
         in  al, 21h                     
         mov mask_master, al             
         in  al, 0A1h                    
@@ -296,6 +374,8 @@ start:
         out 21h, al
         mov al, 1
         out 21h, al
+        
+        ; маска для ведущего контроллера (запрещаем все прерывания, кроме IRQ1 IRQ2)
         mov al, 0FCh
         out 21h, al
 
@@ -322,75 +402,11 @@ start:
         or  eax, 1
         mov cr0, eax
 
+        db  66h 
         db  0EAh
-        dw  offset protected
-        dw  codes
-
-    protected:
-        mov ax, datas
-        mov ds, ax
-        mov ax, screens
-        mov es, ax
-        mov ax, stks
-        mov ss, ax
-        mov eax, stack_size
-        mov esp, eax
-
-        mov di, prmod_pos
-        mov bx, offset protectmode
-        mov cx, protectmode_len
-        mov ah, color
-
-        loop_02:
-            mov al, byte ptr [bx]
-            inc bx
-            stosw
-        loop loop_02
-
-        mov di, memmsg_pos
-        mov bx, offset mem_msg
-        mov cx, mem_msg_len
-        mov ah, color
-
-        loop_03:
-            mov al, byte ptr [bx]
-            inc bx
-            stosw
-        loop loop_03
-
-        call countMemory
-        mov ax, datas
-        mov ds, ax
-
-        looplab:
-        cmp enter_but, 1
-        jne looplab
+        dd  offset protected
+        dw  code2s
         
-        mov gdt_data.limit, 0FFFFh
-        mov gdt_code.limit, 0FFFFh
-        mov gdt_stk.limit, 0FFFFh
-        mov gdt_screen.limit, 0FFFFh
-        mov gdt_data4gb.limit, 0FFFFh
-
-        push ds
-        pop  ds
-        push es
-        pop  es
-        push ss
-        pop  ss
-        
-        ; Загрузка селектора в регистр CS и модификация теневого регистра
-        db  0EAh
-        dw  offset next
-        dw  codes
-        next:
-        mov eax, cr0
-        and eax, 0FFFFFFFEh
-        mov cr0, eax
-        db  0EAh    
-        dw  offset real
-        dw  code
-
     real:
         mov ax, data   
         mov ds, ax
