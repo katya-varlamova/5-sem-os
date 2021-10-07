@@ -27,12 +27,17 @@ stk ends
 
 data segment para 'data'
     gdt_null  descr <>
-    gdt_code descr <code_size-1,0,0,98h>
-    gdt_data4gb descr <0FFFFh,0,0,92h,0CFh> ; attr2: 11001111
-    gdt_code2 descr <code2_size-1,0,0,98h,40h>
-    gdt_data descr <data_size-1,0,0,92h,40h>
-    gdt_stk descr <stack_size-1,0,0,92h,40h>
+    gdt_code descr <code_size-1,0,0,98h> ; attr1: p=1 dpl = 00 1 тип: 1000(исполнение);
+    gdt_data4gb descr <0FFFFh,0,0,92h,0CFh> ; attr1: p=1 dpl = 00 1 тип: 0010(чтение и запись); attr2: g=1 d=1 0 avl=0 граница:1111
+    gdt_code2 descr <code2_size-1,0,0,98h,40h>  ; attr1: p=1 dpl = 00 1 тип: 1000(исполнение); atr2 = d = 1 000000
+    gdt_data descr <data_size-1,0,0,92h,40h> ; attr1: p=1 dpl = 00 1 тип: 0010(чтение и запись); atr2 = d = 1 000000
+    gdt_stk descr <stack_size-1,0,0,92h,40h> ; attr1: p=1 dpl = 00 1 тип: 0010(чтение и запись); atr2 = d = 1 000000
     gdt_screen descr <3999,8000h,0Bh,92h>
+    ; p - присутствие сегмента в памяти
+    ; dpl - уровень привилегий
+    ; g - 0 - в байтах граница, 1 - в блоках по 4кб
+    ; d - разрядность операндов
+    ; avl - используется прикл программами
 
     gdt_size=$-gdt_null
     pdescr    df 0
@@ -45,10 +50,8 @@ data segment para 'data'
     screens=48
 
     idt label byte
-    idescr_0_12 idescr 13 dup (<dummy,code2s,0,8Fh,0>)
-    idescr_13 idescr <dummy,code2s,0,8Fh,0>
-    idescr_14_31 idescr 18 dup (<dummy,code2s,0,8Fh,0>)
-    int08 idescr <timerInt,code2s,0,10001110b,0> 
+    idescr_0_31 idescr 32 dup (<dummy,code2s,0,10001111b,0>) ; тип = 1111(ловушки)
+    int08 idescr <timerInt,code2s,0,10001110b,0> ; p = 1 dpl = 00 0 тип = 1110 (прервания)
     int09 idescr <keybInt,code2s,0,10001110b,0>
     idt_size = $-idt 
 
@@ -349,7 +352,7 @@ start:
         shr eax, 16
         mov (descr ptr [bx]).base_m, al
 
-        ; подготовка псевдодескриптора
+        ; загрузка gdtr через псевдодескриптор
         xor eax, eax
         mov ax, data
         shl eax, 4
@@ -358,14 +361,13 @@ start:
         mov word ptr pdescr, gdt_size - 1
         lgdt pdescr          
 
-
         ; сохранение масок  
         in  al, 21h                     
         mov mask_master, al             
         in  al, 0A1h                    
         mov mask_slave, al
 
-        ; перепрограммирование ведущего контроллера
+        ; устанавливаем базовый вектор ведущего контроллера в 32
         mov al, 11h
         out 20h, al                     
         mov al, 32
@@ -375,7 +377,7 @@ start:
         mov al, 1
         out 21h, al
         
-        ; маска для ведущего контроллера (запрещаем все прерывания, кроме IRQ1 IRQ2)
+        ; маска для ведущего контроллера (запрещаем все прерывания, кроме IRQ0 IRQ1)
         mov al, 0FCh
         out 21h, al
 
@@ -383,6 +385,7 @@ start:
         mov al, 0FFh
         out 0A1h, al
 
+        ; загрузка idtr через псевдодескриптор
         mov  word ptr  ipdescr, idt_size-1 
         xor eax, eax
         mov ax, data
@@ -415,6 +418,7 @@ start:
         mov ax, stack_size
         mov sp, ax
 
+        ; восстановление ведущего контроллера, установив базовый вектор в 8
         mov al, 11h
         out 20h, al
         mov al, 8
@@ -424,23 +428,24 @@ start:
         mov al, 1
         out 21h, al
 
+        ;восстановление масок 
         mov al, mask_master
         out 21h, al
         mov al, mask_slave
         out 0A1h, al
 
-        mov ax, 3FFh
+        ; восстановление idtr
+        mov ax, 3FFh ; граница таблицы векторов
         mov word ptr ipdescr, ax
-        mov eax, 0
-        mov dword ptr ipdescr+2, eax
+        mov eax, 0 ; лин базовый адрес
+        mov dword ptr ipdescr+2, eax 
         lidt ipdescr
 
-        ;A20
-        in  al, 70h 
-        and al, 7Fh
-        out 70h, al
-
-        sti     
+        ;закрытие линии A20
+        mov al, 0D1h 
+        out 64h, al
+        mov al, 0DDh
+        out 60h, al
 
         ;clear screen
         mov ax, 3
