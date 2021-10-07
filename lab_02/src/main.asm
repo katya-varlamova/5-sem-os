@@ -74,7 +74,7 @@ data segment para 'data'
 
     protectmode  db  'Protected Mode!'
     protectmode_len=$-protectmode
-    mem_msg db 'Free memory lost:'
+    mem_msg db 'Free memory available: '
     mem_msg_len=$-mem_msg
     rm_msg      db 27, '[29;44mReal Mode. Press any key to enter protected mode!', 27, '[0m$'
     pm_msg_out  db 27, '[29;44mReal Mode again!', 27, '[0m$'
@@ -162,20 +162,15 @@ code2 segment para public 'code' use32
         push edx
         push ecx
         push ebx
-
-        mov ecx, 16
+        xor edx, edx
+        mov ecx, 1024
+        div ecx
+        mov ecx, 10
         mov bx, mempos
         prmem:
             xor edx, edx
             div ecx; edx:eax / 10
-            cmp dl, 10
-            jl decnum
-                sub dl, 10
-                add dl, 'A'
-                jmp nextl
-            decnum:
-                add dl, '0'
-            nextl:
+            add dl, '0'
             mov dh, color
             mov es:[bx], dx
             dec bx
@@ -268,12 +263,12 @@ code2 segment para public 'code' use32
         mov es:[bx], ax      
         add syml_pos, 2
     endlab:
-        in  al, 60h
         in  al, 61h 
         or  al, 80h 
         out 61h, al 
         and al, 7Fh 
         out 61h, al
+
         mov al, 20h 
         out 20h, al
 
@@ -293,7 +288,7 @@ start:
         mov ax, data
         mov ds, ax
 
-        ; clear screen
+        ; очистить экран
         mov ax, 3
         int 10h
 
@@ -307,11 +302,11 @@ start:
         mov dl, 10
         int 21h
 
-        ;key waiting
+        ; ожидание ввода символа
         mov ah, 10h
         int 16h
 
-        ; clear screen
+        ; очистить экран
         mov ax, 3
         int 10h
 
@@ -418,6 +413,9 @@ start:
         mov ax, stack_size
         mov sp, ax
 
+        ; контроллер прерываний отправляет процеессору номер вектора, который формируется
+        ; путём сложения базового номера и с номером линии, по которой поступил запрос от устройства
+
         ; восстановление ведущего контроллера, установив базовый вектор в 8
         mov al, 11h
         out 20h, al
@@ -435,7 +433,7 @@ start:
         out 0A1h, al
 
         ; восстановление idtr
-        mov ax, 3FFh ; граница таблицы векторов
+        mov ax, 3FFh ; граница таблицы векторов (1кб)
         mov word ptr ipdescr, ax
         mov eax, 0 ; лин базовый адрес
         mov dword ptr ipdescr+2, eax 
@@ -447,7 +445,7 @@ start:
         mov al, 0DDh
         out 60h, al
 
-        ;clear screen
+        ; очистить экран
         mov ax, 3
         int 10h
 
