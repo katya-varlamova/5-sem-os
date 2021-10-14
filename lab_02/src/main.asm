@@ -30,7 +30,7 @@ data segment para 'data'
     gdt_code descr <code_size-1,0,0,98h> ; attr1: p=1 dpl = 00 1 тип: 1000(исполнение);
     gdt_data4gb descr <0FFFFh,0,0,92h,0CFh> ; attr1: p=1 dpl = 00 1 тип: 0010(чтение и запись); attr2: g=1 d=1 0 avl=0 граница:1111
     gdt_code2 descr <code2_size-1,0,0,98h,40h>  ; attr1: p=1 dpl = 00 1 тип: 1000(исполнение); atr2 = d = 1 000000
-    gdt_data descr <data_size-1,0,0,92h,40h> ; attr1: p=1 dpl = 00 1 тип: 0010(чтение и запись); atr2 = d = 1 000000
+    gdt_data descr <data_size-1,0,0,92h,0h> ; attr1: p=1 dpl = 00 1 тип: 0010(чтение и запись); atr2 = d = 1 000000
     gdt_stk descr <stack_size-1,0,0,92h,40h> ; attr1: p=1 dpl = 00 1 тип: 0010(чтение и запись); atr2 = d = 1 000000
     gdt_screen descr <3999,8000h,0Bh,92h>
     ; p - присутствие сегмента в памяти
@@ -66,6 +66,7 @@ data segment para 'data'
     enter_but db 0
     mempos=80*2+mem_msg_len*2+7*2
     cursor_pos=mempos+2
+    mbmsg_pos=cursor_pos+2
     syml_pos dw 80*2*2
     cursor_symb_on=220
     cursor_symb_off=223
@@ -74,6 +75,10 @@ data segment para 'data'
 
     protectmode  db  'Protected Mode!'
     protectmode_len=$-protectmode
+
+    mbmsg  db  'Kb '
+    mbmsglen=$-mbmsg
+
     mem_msg db 'Free memory available: '
     mem_msg_len=$-mem_msg
     rm_msg      db 27, '[29;44mReal Mode. Press any key to enter protected mode!', 27, '[0m$'
@@ -81,9 +86,9 @@ data segment para 'data'
     color=12h
 
     asciimap db 0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0, 0
-    db 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', 0, 0
-    db 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', 0, 0, 0, '\'
-    db 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/'
+    db 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0, 0
+    db 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', 0, 0, 0, '\'
+    db 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'
     data_size = $-gdt_null 
 data ends
 
@@ -125,6 +130,17 @@ code2 segment para public 'code' use32
         call countMemory
         mov ax, datas
         mov ds, ax
+
+        mov edi, mbmsg_pos
+        mov ebx, offset mbmsg
+        mov ecx, mbmsglen
+        mov ah, color
+
+        loop_04:
+            mov al, byte ptr [bx]
+            inc bx
+            stosw
+        loop loop_04
 
         looplab:
         cmp enter_but, 1
@@ -209,6 +225,7 @@ code2 segment para public 'code' use32
     exit:
 
     mov eax, edx
+    add eax, 100000h
     call output_dec
 
     pop edx
