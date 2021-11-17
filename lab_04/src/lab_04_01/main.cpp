@@ -17,16 +17,17 @@ int main()
 
         if (pid == 0)
         {
-            printf("\nCHILD №%d LOG BEFORE BLOCK pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
+            printf("\nCHILD №%d BEFORE BLOCK: pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
             sleep(2);
-            printf("\nCHILD №%d LOG AFTER BLOCK pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
+            printf("\nCHILD №%d AFTER BLOCK: pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
             return OK;
         }
 
         childpids[i] = pid;
     }
+    printf("PARENT: pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
 
-    printf("PARENT pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
     sleep(1);
+
     return OK;
 }

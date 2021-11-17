@@ -124,15 +124,15 @@ int main() {
         }
 
         if (pid == 0) {
-            printf("\nCHILD №%d LOG BEFORE BLOCK pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
+            printf("\nCHILD №%d BEFORE BLOCK: pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
             sleep(2);
-            printf("\nCHILD №%d LOG AFTER BLOCK pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
+            printf("\nCHILD №%d AFTER BLOCK: pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
             return OK;
         }
 
         childpids[i] = pid;
     }
-    printf("PARENT pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
+    printf("PARENT: pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
     sleep(1);
     return OK;
 }
@@ -170,31 +170,31 @@ int main() {
         }
         if (pid == 0){
             sleep(2);
-            printf("CHILD №%d LOG pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
+            printf("CHILD №%d: pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
             return OK;
         }
         childpids[i] = pid;
     }
-    printf("PARENT LOG pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
+    printf("PARENT: pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
     for (int i = 0; i < 2; i++)
     {
         int status;
         pid_t childpid = wait(&status);
         if (WIFEXITED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
+            printf("PARENT: child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
         }
         else if (WIFSIGNALED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
+            printf("PARENT: child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
         }
         else if (WIFSTOPPED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
+            printf("PARENT: child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
         }
     }
     return OK;
 }
 \end{lstlisting}
 
-Результат работы программы приведён на рисунке \ref{task02:demo}. Видно, что в отличие от программы из первого задания процесс-предок дождался завершения дечерних процессов, о чём свидетельствуют коды завершения дочерних процессов, перехваченные процессом-предком.
+Результат работы программы приведён на рисунке \ref{task02:demo}. Видно, что в отличие от программы из первого задания процесс-предок дождался завершения дочерних процессов, о чём свидетельствуют коды завершения дочерних процессов, перехваченные процессом-предком.
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\linewidth]{task02.png}
@@ -223,30 +223,29 @@ int main() {
             return ERROR_FORK;
         }
         if (pid == 0) {
-            printf("CHILD №%d LOG pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
-            if (i == 0) execlp("ps", "-al", NULL);
-            else execlp("ls", "-a", NULL);
+            printf("CHILD №%d: pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
+            if (i == 0) execl("sort", "sort", "1", "3", "2", "0", "4", "5", NULL);
+            else execl("max", "max", "1", "3", "2", "0", "4", "5", NULL);
             return ERROR_EXEC;
         }
         childpids[i] = pid;
     }
-    printf("PARENT LOG pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
+    printf("PARENT: pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
     for (int i = 0; i < 2; i++) {
         int status;
         pid_t childpid = wait(&status);
         if (WIFEXITED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
+            printf("PARENT: child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
         } else if (WIFSIGNALED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
+            printf("PARENT: child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
         } else if (WIFSTOPPED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
+            printf("PARENT: child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
         }
     }
-    return OK;
-}
+    return OK; }
 \end{lstlisting}
 
-Результат работы программы приведён на рисунке \ref{task03:demo}. Видно, что в отличие от программы из второго задания дочерние процессы переходят на выполнение других программ, которые передаются системному вызову exec() в качестве параметра. В данном случае выполняются программы "ps - al" и "ls -a". При этом код, который следует за вызовом exec() будет выполнен лишь в том случае, если возникнет ошибка при загрузке или выполнении программы, переданной exec().
+Результат работы программы приведён на рисунке \ref{task03:demo}. Видно, что в отличие от программы из второго задания дочерние процессы переходят на выполнение других программ, которые передаются системному вызову exec() в качестве параметра. В данном случае выполняются программы "sort" и "max" с аргументами в виде элементов обрабатываемого массива (массив: [1, 3, 2, 0, 4, 5]). Программа sort выводит отсортированный массив, программа max выводит максимальный элемент в массиве. 
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\linewidth]{task03.png}
@@ -290,22 +289,22 @@ int main() {
         }
         childpids[i] = pid;
     }
-    printf("PARENT LOG pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
+    printf("PARENT: pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
     for (int i = 0; i < 2; i++) {
         int status;
         pid_t childpid = wait(&status);
         if (WIFEXITED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
+            printf("PARENT: child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
         } else if (WIFSIGNALED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
+            printf("PARENT: child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
         } else if (WIFSTOPPED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
+            printf("PARENT: child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
         }
     }
     char buf[15];
     close(fd[1]);
     read(fd[0], buf, 15);
-    printf("PARENT LOG received messages:\n%s", buf);
+    printf("PARENT: received messages:\n%s", buf);
     return OK;
 }
 \end{lstlisting}
@@ -318,7 +317,7 @@ int main() {
 	\includegraphics[width=\linewidth]{task04.png}
 	\caption{Демонстрация работы программы (задание №4).}
 
-	\label{fig:task04}
+	\label{task04:demo}
 
 \end{figure}
 \newpage
@@ -359,33 +358,33 @@ int main() {
             if (sendSig) {
                 close(fd[0]);
                 write(fd[1], messages[i], strlen(messages[i]));
-                printf("CHILD №%d (pid: %d, ppid: %d, grp: %d) sent message to parent\n", i + 1, getpid(), getppid(), getpgrp());
+                printf("CHILD №%d: (pid: %d, ppid: %d, grp: %d) sent message to parent\n", i + 1, getpid(), getppid(), getpgrp());
             }
             else {
-                printf("No signal sent!\n");
+                printf("CHILD №%d: didn't send a message\n", i + 1);
             }
             return OK;
         }
         childpids[i] = pid;
     }
-    printf("PARENT LOG pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
+    printf("PARENT: pid: %d grp: %d, child's pids: %d, %d\n", getpid(), getpgrp(), childpids[0], childpids[1]);
     for (int i = 0; i < 2; i++) {
         int status;
         pid_t childpid = wait(&status);
         if (WIFEXITED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
+            printf("PARENT: child №%d (PID = %d) has finished with code: %d\n", i + 1, childpid, WEXITSTATUS(status));
         }
         else if (WIFSIGNALED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
+            printf("PARENT: child №%d (PID = %d) has finished because of signal: %d\n", i + 1, childpid, WTERMSIG(status));
         }
         else if (WIFSTOPPED(status)) {
-            printf("PARENT LOG child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
+            printf("PARENT: child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
         }
     }
     char buf[15];
     close(fd[1]);
     read(fd[0], buf, 15);
-    printf("PARENT LOG received messages:\n%s", buf);
+    printf("PARENT: received messages:\n%s", buf);
     return OK;
 }
 \end{lstlisting}
@@ -398,7 +397,20 @@ int main() {
 	\label{task05:demo}
 \end{figure}
 
-
+\newpage
+\section*{Дополнительное задание}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale = 0.8]{1.jpg}
+	\caption{Последовательность действий fork}
+	\label{task05:demo}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale = 0.8]{2.jpg}
+	\caption{Последовательность действий exec}
+	\label{task05:demo}
+\end{figure}
 \bibliographystyle{utf8gost705u}  % стилевой файл для оформления по ГОСТу
 
 \bibliography{51-biblio}          % имя библиографической базы (bib-файла)
