@@ -20,8 +20,8 @@ int main()
         if (pid == 0)
         {
             printf("CHILD №%d: pid: %d, ppid: %d, grp: %d\n", i + 1, getpid(), getppid(), getpgrp());
-            if (i == 0) execl("sort", "sort", "1", "3", "2", "0", "4", "5", NULL);
-            else execl("max", "max", "1", "3", "2", "0", "4", "5", NULL);
+            if (i == 0) execl("sort.app", "sort", "1", "3", "2", "0", "4", "5", NULL);
+            else execl("max.app", "max", "1", "3", "2", "0", "4", "5", NULL);
             return ERROR_EXEC;
         }
         childpids[i] = pid;
