@@ -1,49 +1,24 @@
 #include <iostream>
 #define ERROR 1
-void swap(char *p1, char *p2, size_t size)
+void sort(int *data, int length, int (*cmp)(int, int))
 {
-    if (!size || !p1 || !p1)
-        return;
-    char q;
-    for (size_t i = 0; i < size; i++)
-    {
-        q = *p1;
-        *p1 = *p2;
-        *p2 = q;
-        p1++;
-        p2++;
-    }
-}
-void sort(void *beg, size_t number, size_t size, int (*comparator)(const void *, const void *))
-{
-    if (beg == NULL || comparator == NULL)
-        return;
-    char *pb = (char *)beg;
-    char *pe = pb + size * number;
-    if (pb == pe)
-        return;
-    pe -= size;
-    char *ptr = NULL, *max_ptr = NULL;
-    while (pe > pb)
-    {
-        max_ptr = ptr = pe;
-        while (ptr >= pb)
-        {
-            if (comparator(ptr, max_ptr) > 0)
-                max_ptr = ptr;
-            ptr -= size;
+    bool fl;
+    for (size_t j = 1; j < length; j++) {
+        fl = false;
+        for (size_t i = 0; i < length - j; i++) {
+            if (cmp(data[i], data[i + 1]) > 0) {
+                std::swap(data[i], data[i + 1]);
+                fl = true;
+            }
         }
-        if (max_ptr != pe)
-            swap(max_ptr, pe, size);
-        pe -= size;
+        if (!fl)
+            break;
     }
     return;
 }
-int compare_int(const void *f, const void *s)
+int compare_int(int f, int s)
 {
-    int *a = (int *)(f);
-    int *b = (int *)(s);
-    return *a - *b;
+    return f - s;
 }
 int main(int argc, const char *argv[])
 {
@@ -55,7 +30,7 @@ int main(int argc, const char *argv[])
     for (int i = 1; i < argc; i++)
         a[i - 1] = atoi(argv[i]);
 
-    sort(a, argc - 1, sizeof (int), compare_int);
+    sort(a, argc - 1, compare_int);
 
     printf("sorted array: ");
     for (int i = 0; i < argc - 1; i++)

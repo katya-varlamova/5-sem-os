@@ -20,6 +20,7 @@ int main()
     signal(SIGINT, empty);
     int fd[2];
     const char *messages[2] = { "msg\n", "msg msg\n"};
+    int len[2] = {strlen(messages[0]), strlen(messages[1])};
     if (pipe(fd) == -1) {
         return ERROR_PIPE;
     }
@@ -40,7 +41,7 @@ int main()
 
             if (sendSig) {
                 close(fd[0]);
-                write(fd[1], messages[i], strlen(messages[i]));
+                write(fd[1], messages[i], len[i]);
                 printf("CHILD №%d: (pid: %d, ppid: %d, grp: %d) sent message to parent\n", i + 1, getpid(), getppid(), getpgrp());
             }
             else {
@@ -69,9 +70,10 @@ int main()
             printf("PARENT: child №%d (PID = %d) has been stopped because of signal: %d\n", i + 1, childpid, WSTOPSIG(status));
         }
     }
-    char buf[15];
+    char buf[len[0] + len[1]];
     close(fd[1]);
-    read(fd[0], buf, 15);
+    read(fd[0], buf, len[0] + len[1]);
+    buf[len[0] + len[1]] = '\0';
     printf("PARENT: received messages:\n%s", buf);
     return OK;
 }
