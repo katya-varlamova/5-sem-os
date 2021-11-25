@@ -8,22 +8,20 @@
 #define ERROR_PIPE 3
 #define OK 0
 bool sendSig = 0;
-void empty(int sig)
-{
-}
 void sendSigSwitch(int sig)
 {
     sendSig = 1;
 }
 int main()
 {
-    signal(SIGINT, empty);
     int fd[2];
     const char *messages[2] = { "msg\n", "msg msg\n"};
     int len[2] = {strlen(messages[0]), strlen(messages[1])};
     if (pipe(fd) == -1) {
         return ERROR_PIPE;
     }
+    signal(SIGINT, sendSigSwitch);
+    sleep(4);
     int childpids[2];
     for (int i = 0; i < 2; i++)
     {
@@ -36,9 +34,6 @@ int main()
 
         if (pid == 0)
         {
-            signal(SIGINT, sendSigSwitch);
-            sleep(6);
-
             if (sendSig) {
                 close(fd[0]);
                 write(fd[1], messages[i], len[i]);
