@@ -1,4 +1,4 @@
-app
+*.app
 execs
 *.m4a
 *~
